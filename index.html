@@ -813,6 +813,7 @@
       // 通常の捕獲演出を先に見せてから、少し間を置いて記念演出へ
       setTimeout(()=>{ enterCompleteArtMode(); }, 1000);
     }
+    saveProgress();
   }
 
   /* ---------------- パララックス漂い（背景層のみ） ----------------
@@ -1255,7 +1256,8 @@
     const fromLeft = Math.random() < 0.5;
     const startY = rand(H*0.05, H*0.45);
     // ほとんどは今見えているカメラ周辺、たまに離れた場所からも流す（カメラを振らせる動機）
-    const nearCam = Math.random() < 0.75;
+    // ただし流星群中は「来たのに見えない」を防ぐため必ず画面付近に出す
+    const nearCam = meteorShowerActive ? true : Math.random() < 0.75;
     const baseX = nearCam ? cameraX : rand(0, WORLD_WIDTH);
     const x = nearCam ? (fromLeft ? baseX-40 : baseX+W+40) : baseX;
     const angle = fromLeft ? rand(0.3,0.55) : Math.PI - rand(0.3,0.55);
@@ -1447,7 +1449,12 @@
   // 保存機能
   function saveProgress() {
     try {
-      localStorage.setItem('hoshitsunagi_lockedGroups', JSON.stringify(lockedGroups));
+      const data = {
+        lockedGroups: lockedGroups,
+        capturedSpecies: Array.from(capturedSpecies.entries()),
+        allSpeciesComplete: allSpeciesComplete
+      };
+      localStorage.setItem('hoshitsunagi_lockedGroups', JSON.stringify(data));
     } catch(e) {
       console.warn('保存に失敗しました', e);
     }
@@ -1457,7 +1464,20 @@
     try {
       const saved = localStorage.getItem('hoshitsunagi_lockedGroups');
       if (saved) {
-        lockedGroups = JSON.parse(saved);
+        const data = JSON.parse(saved);
+        // 旧形式(配列そのまま=星座のみ)との互換性を保つ
+        if (Array.isArray(data)) {
+          lockedGroups = data;
+        } else {
+          lockedGroups = data.lockedGroups || [];
+          if (Array.isArray(data.capturedSpecies)) {
+            capturedSpecies.clear();
+            for (const [id, count] of data.capturedSpecies) {
+              capturedSpecies.set(id, count);
+            }
+          }
+          allSpeciesComplete = !!data.allSpeciesComplete;
+        }
         // JSON化でdateが文字列になっているのでDate型に戻す
         lockedGroups.forEach(g => { g.date = new Date(g.date); });
         console.log(`${lockedGroups.length}個の星座を読み込みました`);
