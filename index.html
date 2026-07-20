@@ -1,4 +1,4 @@
-<!DOCTYPE html><!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="ja">
 <head>
 <meta charset="UTF-8">
@@ -220,7 +220,15 @@
     transform: translateY(10px);
     transition: opacity 0.4s ease 0.5s, transform 0.4s ease 0.5s;
   }
+  #completionBackBtn {
+    padding: 14px 28px !important;
+    min-width: 180px;
+    font-size: 15px;
+  }
   #completionBar.show{ opacity:1; pointer-events:auto; transform:translateY(0); }
+  /* 非表示時は透明な当たり判定が下のボタンを奪わないよう、子ボタン自体も明示的にpointer-events:noneにする */
+  #completionBackBtn{ pointer-events:none; }
+  #completionBar.show #completionBackBtn{ pointer-events:auto; }
 
   #completeArtBar{
     position:fixed; left:0; bottom:0;
@@ -231,6 +239,8 @@
     transition: opacity 0.4s ease 0.5s, transform 0.4s ease 0.5s;
   }
   #completeArtBar.show{ opacity:1; pointer-events:auto; transform:translateY(0); }
+  #completeArtBackBtn{ pointer-events:none; }
+  #completeArtBar.show #completeArtBackBtn{ pointer-events:auto; }
 
   #zukanCompleteBtn{
     display:none; width:100%; margin-bottom:12px;
@@ -317,7 +327,6 @@
     <p>✦ スワイプで そらにかえす</p>
   </div>
   <button id="titleStartBtn">はじめる</button>
-  <p id="titleNoSaveNote">※ あそんだきろくは のこらないよ</p>
 </div>
 
 <div id="topbar">
@@ -624,7 +633,11 @@
   const completionBackBtn = document.getElementById('completionBackBtn');
   const completeArtBar = document.getElementById('completeArtBar');
   const completeArtBackBtn = document.getElementById('completeArtBackBtn');
-  completeArtBackBtn.addEventListener('click', exitCompleteArtMode);
+  completeArtBackBtn.addEventListener('click', (e) => {
+    e.stopPropagation();
+    e.preventDefault();
+    exitCompleteArtMode();
+  });
 
   /* ---------------- タイトル画面 ---------------- */
   const titleScreen = document.getElementById('titleScreen');
@@ -1430,6 +1443,28 @@
   let activeStars = [];
   let activeConnections = [];
   let lockedGroups = [];
+
+  // 保存機能
+  function saveProgress() {
+    try {
+      localStorage.setItem('hoshitsunagi_lockedGroups', JSON.stringify(lockedGroups));
+    } catch(e) {
+      console.warn('保存に失敗しました', e);
+    }
+  }
+
+  function loadProgress() {
+    try {
+      const saved = localStorage.getItem('hoshitsunagi_lockedGroups');
+      if (saved) {
+        lockedGroups = JSON.parse(saved);
+        console.log(`${lockedGroups.length}個の星座を読み込みました`);
+      }
+    } catch(e) {
+      console.warn('読み込みに失敗しました', e);
+      lockedGroups = [];
+    }
+  }
   let pendingSelection = null;
   let draggingStar = null;
   let dragMoved = false;
@@ -1721,7 +1756,7 @@
   // 白ぼかしの縁取り付きでテキストを描く（重ね描きで縁の濃度を稼ぐ）
   function fillTextWithHalo(text, x, y, fillColor){
     ctx.save();
-    ctx.shadowColor = 'rgba(255,255,255,0.9)';
+    ctx.shadowColor = 'rgba(255,220,100,0.95)';  // 黄色のぼかし
     ctx.shadowBlur = 5;
     ctx.fillStyle = fillColor;
     ctx.fillText(text, x, y);
@@ -1807,13 +1842,13 @@
       const strokeColor = 'rgba(255,255,255,0.95)';
       drawCloudShape(x, y, w, h, fillColor, strokeColor, 3);
 
-      ctx.fillStyle = '#3a2c4a';
+      ctx.fillStyle = '#ffffff';
       ctx.textAlign = 'center';
       ctx.textBaseline = 'middle';
       const cxDraw = x + w/2;
       lines.forEach((line, i) => {
         const ly = y + padY + textH/2 - (lines.length*fontSize + (lines.length-1)*lineGap)/2 + fontSize/2 + i*(fontSize+lineGap);
-        fillTextWithHalo(line, cxDraw, ly, '#3a2c4a');
+        fillTextWithHalo(line, cxDraw, ly, '#ffffff');
       });
       ctx.restore();
       return;
@@ -1852,7 +1887,7 @@
       const textCy = by + bh*0.46;
       lines.forEach((line, i) => {
         const ly = textCy - textH/2 + fontSize/2 + i*(fontSize+lineGap);
-        fillTextWithHalo(line, textCx, ly, '#3a2c4a');
+        fillTextWithHalo(line, textCx, ly, '#ffffff');
       });
     }else{
       const w = Math.min(maxWidth, contentW + padX*2);
@@ -1946,7 +1981,7 @@
       ctx.moveTo(-6,-58); ctx.lineTo(-26,-46); ctx.lineTo(-6,-50); ctx.lineTo(14,-46); ctx.closePath(); ctx.fill();
       ctx.fillStyle = '#ff7fb0';
       ctx.beginPath(); ctx.arc(-6,-50,4,0,Math.PI*2); ctx.fill();
-      ctx.fillStyle = '#3a2c4a';
+      ctx.fillStyle = '#ffffff';
       ctx.beginPath(); ctx.ellipse(-20,-108, 3.6,4.6,0,0,Math.PI*2); ctx.fill();
       if(talking){
         // 笑顔差分（placeholder: 口角の弧）
@@ -2004,7 +2039,7 @@
       ctx.moveTo(0,-56); ctx.lineTo(-20,-44); ctx.lineTo(0,-48); ctx.lineTo(20,-44); ctx.closePath(); ctx.fill();
       ctx.fillStyle = '#ff7fb0';
       ctx.beginPath(); ctx.arc(0,-48,4,0,Math.PI*2); ctx.fill();
-      ctx.fillStyle = '#3a2c4a';
+      ctx.fillStyle = '#ffffff';
       ctx.beginPath(); ctx.ellipse(-16,-104, 4,5,0,0,Math.PI*2); ctx.fill();
       ctx.beginPath(); ctx.ellipse(16,-104, 4,5,0,0,Math.PI*2); ctx.fill();
       ctx.strokeStyle = '#e08fae'; ctx.lineWidth = 2.5; ctx.lineCap='round';
@@ -2294,7 +2329,11 @@
     drawRaychellFront(clock, completion.grp.comment, completion.variant);
   }
 
-  completionBackBtn.addEventListener('click', exitCompletionMode);
+  completionBackBtn.addEventListener('click', (e) => {
+    e.stopPropagation();
+    e.preventDefault();
+    exitCompletionMode();
+  });
 
   /* ---------------- 命名フロー ---------------- */
   const raychellComments = [
@@ -2889,60 +2928,10 @@
   resize();
   scheduleNextShoot(0.5);
   scheduleNextMeteorShower(0.5);
+  loadProgress();  // 保存された星座を読み込み
   requestAnimationFrame(frame);
 
 })();
-</script>
-</body>
-</html>
-
-<html lang="ja">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-<title>ほしつなぎ 〜レイチェルと流れ星の夜〜</title>
-<!-- 外部画像版 - GitHub Pages用 -->
-<style>
-  /* Same CSS as original */
-  :root{
-    --pink: #ff9ec4;
-    --pink-deep: #ff7fb0;
-    --lavender: #b7a8de;
-    --gold: #ffd9a0;
-    --gold-bright: #fff1cf;
-    --panel-bg: rgba(20, 16, 40, 0.55);
-    --panel-border: rgba(255, 210, 240, 0.35);
-  }
-  /* (The full CSS would be copied here, but to save space in this response, assume it's the same as original) */
-</style>
-</head>
-<body>
-<canvas id="sky"></canvas>
-<!-- The rest of the HTML body is the same, but IMGS loading is changed to relative paths -->
-
-<script>
-  // Modified ASSETS loading for external files
-  const ASSETS = {
-    sideA: 'assets/sideA.png',
-    sideB: 'assets/sideB.png',
-    sideC: 'assets/sideC.png',
-    frontA: 'assets/frontA.png',
-    frontB: 'assets/frontB.png',
-    frontC: 'assets/frontC.png',
-    bubbleA: 'assets/bubbleA.png',
-    bubbleB: 'assets/bubbleB.png',
-    starA: 'assets/starA.png',
-    starB: 'assets/starB.png',
-    titleLogo: 'assets/titleLogo.png',
-    soundOn: 'assets/soundOn.png',
-    soundOff: 'assets/soundOff.png',
-    completeArt: 'assets/completeArt.png'
-  };
-
-  // The rest of the script is the same, but update the loading part to use ASSETS instead of ASSETS_B64
-  // (In practice, the loading loop would use ASSETS[key] as src instead of data URL)
-
-  // Full script would be copied with modifications
 </script>
 </body>
 </html>
