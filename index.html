@@ -1458,6 +1458,8 @@
       const saved = localStorage.getItem('hoshitsunagi_lockedGroups');
       if (saved) {
         lockedGroups = JSON.parse(saved);
+        // JSON化でdateが文字列になっているのでDate型に戻す
+        lockedGroups.forEach(g => { g.date = new Date(g.date); });
         console.log(`${lockedGroups.length}個の星座を読み込みました`);
       }
     } catch(e) {
@@ -2426,6 +2428,7 @@
       uid: makeUid(now)
     };
     lockedGroups.push(grp);
+    saveProgress();
 
     activeStars = activeStars.filter((s, i) => !connectedIdx.has(i));
     activeConnections = [];
@@ -2488,6 +2491,7 @@
     }
     const idx = lockedGroups.indexOf(grp);
     if(idx !== -1) lockedGroups.splice(idx,1);
+    saveProgress();
     updateMakeBtnVisibility();
     showToast(`「${grp.name}」をほどいたよ`);
   }
