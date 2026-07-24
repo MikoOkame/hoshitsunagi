@@ -1264,12 +1264,16 @@
     // おねだり中は指名された種を高確率で流す（達成しやすくする）
     const sp = (currentRequest && Math.random() < 0.35) ? currentRequest : randomSpecies();
     const speed = rand(220, 340) * sp.speedMul; // レアほど速い（現行速度＝最遅基準）
+    // 寿命は「画面を横切りきるのに十分な時間」を確保する（PCの広い画面で
+    // 画面内にいるうちに時間切れで消えてしまうのを防ぐため、画面幅ベースで算出）
+    const travelDistance = W + 200; // 画面幅＋余裕
+    const timeToCross = travelDistance / speed;
     shootingStars.push({
       x, y: startY,
       vx: Math.cos(angle)*speed,
       vy: Math.sin(angle)*speed,
       trail: [], life: 0,
-      maxLife: rand(2.6, 4.0) / Math.sqrt(sp.speedMul),
+      maxLife: Math.max(timeToCross * 1.6, rand(2.6, 4.0)) / Math.sqrt(sp.speedMul),
       sp
     });
   }
